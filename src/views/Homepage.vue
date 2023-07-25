@@ -114,7 +114,7 @@
             type="primary"
             ghost
             @click="sendOTP"
-            :disabled="new Boolean(sendOTPCooldown)"
+            :disabled="!!sendOTPCooldown"
             :loading="sendOTPLoading"
             :style="{ width: sendOTPCooldown ? '60px' : '140px' }"
           >
