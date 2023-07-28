@@ -83,8 +83,13 @@
 
     <div class="content">
       <n-alert title="注意" type="info">
-        每次推流前务必手动更新一次推流密钥
+        每次推流前 务必 手动更新一次推流密钥
       </n-alert>
+
+      <n-alert title="注意" type="info">
+        受限于服务端上行带宽，建议推流码率不超过 8000 kbps
+      </n-alert>
+
       <n-card title="推流教程">
         <n-tabs type="line" animated>
           <n-tab-pane name="pc" tab="Windows / macOS / Linux">

@@ -6,7 +6,7 @@ import { NaiveUiResolver } from "unplugin-vue-components/resolvers";
 
 export default defineConfig({
   build: {
-    outDir: '../golive/static'
+    outDir: "../golive/static",
   },
   server: {
     proxy: {
@@ -14,6 +14,11 @@ export default defineConfig({
         target: "http://localhost:9889/api",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+      "/live": {
+        target: "http://localhost:9889/live",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/live/, ""),
       },
     },
   },

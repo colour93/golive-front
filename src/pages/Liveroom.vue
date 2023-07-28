@@ -15,7 +15,8 @@
         </div>
       </div>
     </div>
-    <video-play v-bind="playerOptions" id="video" />
+    <!-- <video-play v-bind="playerOptions" id="video" /> -->
+    <div id="video" ref="player"></div>
   </div>
   <not-found-page v-if="userStatus === -1"></not-found-page>
 </template>
@@ -62,9 +63,9 @@
 
 <script setup lang="ts">
 import flvjs from "flv.js";
+import Hls from "hls.js";
 
-import "vue3-video-play/dist/style.css";
-import { videoPlay } from "vue3-video-play";
+import DPlayer from "dplayer";
 
 import { useHead } from "@vueuse/head";
 import { onBeforeRouteUpdate, useRoute } from "vue-router";
@@ -73,6 +74,8 @@ import axios from "axios";
 import { useMessage } from "naive-ui";
 
 import NotFoundPage from "../pages/NotFound.vue";
+
+const player = ref();
 
 const route = useRoute();
 const message = useMessage();
@@ -86,27 +89,6 @@ onMounted(() => {
 onBeforeRouteUpdate((to) => {
   roomid.value = to.params.roomid;
   loadLiveroom();
-});
-
-const playerOptions = reactive({
-  width: "100%",
-  height: "auto",
-  color: "#409eff",
-  loop: false,
-  mirror: false,
-  ligthOff: false,
-  control: true,
-  autoPlay: true,
-  src: "",
-  type: "mp4",
-  controlBtns: [
-    "audioTrack",
-    "quality",
-    "volume",
-    "pip",
-    "pageFullScreen",
-    "fullScreen",
-  ],
 });
 
 const userInfo = reactive({
@@ -151,47 +133,60 @@ async function loadLiveroom() {
   userInfo.verified = user.verified;
   userInfo.avatarUrl = user.avatarUrl;
 
-  if (stream && flvjs.isSupported()) {
-    const videoElement = document.getElementById(
-      "video"
-    ) as HTMLVideoElement | null;
-
-    if (!videoElement) {
-      setTimeout(() => {
-        try {
-          createFlvPlayer(
-            stream,
-            document.getElementById("video") as HTMLVideoElement
-          );
-        } catch (error) {
-          console.log(error);
-        }
-      }, 500);
-    } else {
-      createFlvPlayer(stream, videoElement);
-    }
-  }
+  if (stream) createPlayer(stream);
 }
 
-function createFlvPlayer(
-  stream: { hls: string; flv: string },
-  videoElement: HTMLVideoElement
-) {
-  const flvPlayer = flvjs.createPlayer({
-    type: "flv",
-    url: stream.flv,
-  });
+function createPlayer(stream: { hls: string; flv: string }) {
+  let count = 0;
 
-  // flv 不兼容时选择 hls
-  flvPlayer.on(flvjs.Events.ERROR, (event, data) => {
-    if (event === "MediaError") {
-      console.log("[FLV] > " + data);
-      playerOptions.type = "m3u8";
-      playerOptions.src = stream.hls;
-    }
-  });
+  if (!document.getElementById("video") && count <= 50) {
+    setTimeout(() => {
+      createPlayer(stream);
+      count++;
+    }, 200);
+    return;
+  }
 
-  flvPlayer.attachMediaElement(videoElement);
-  flvPlayer.load();
+  console.log(count);
+
+  new DPlayer({
+    container: player.value,
+    live: true,
+    airplay: true,
+    chromecast: true,
+    autoplay: true,
+    screenshot: true,
+    video: {
+      quality: [
+        {
+          name: "FLV (推荐)",
+          url: stream.flv,
+          type: "customFlv",
+        },
+        {
+          name: "HLS (备用)",
+          url: stream.hls,
+          type: "customHls",
+        },
+      ],
+      defaultQuality: 0,
+      customType: {
+        customFlv: function (video: HTMLVideoElement) {
+          const flvPlayer = flvjs.createPlayer({
+            type: "flv",
+            url: video.src,
+            isLive: true,
+          });
+          flvPlayer.attachMediaElement(video);
+          flvPlayer.load();
+        },
+        customHls: function (video: HTMLVideoElement) {
+          const hls = new Hls();
+          hls.loadSource(video.src);
+          hls.attachMedia(video);
+        },
+      },
+    },
+  });
 }
 </script>
