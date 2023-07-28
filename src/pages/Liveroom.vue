@@ -15,8 +15,13 @@
         </div>
       </div>
     </div>
-    <!-- <video-play v-bind="playerOptions" id="video" /> -->
-    <div id="video" ref="player"></div>
+    <div class="content">
+      <div id="video" ref="player"></div>
+      <n-alert title="Tips" type="info" closable>
+        如遇播放黑屏，请尝试在 右下角
+        切换编码；如遇很多人都播放黑屏，请让主播重新推流
+      </n-alert>
+    </div>
   </div>
   <not-found-page v-if="userStatus === -1"></not-found-page>
 </template>
@@ -64,18 +69,26 @@
 <script setup lang="ts">
 import flvjs from "flv.js";
 import Hls from "hls.js";
-
 import DPlayer from "dplayer";
+
+import platform from "platform";
 
 import { useHead } from "@vueuse/head";
 import { onBeforeRouteUpdate, useRoute } from "vue-router";
-import { ref, onMounted, reactive, watch } from "vue";
+import {
+  ref,
+  onMounted,
+  reactive,
+  watch,
+  onBeforeUnmount,
+} from "vue";
 import axios from "axios";
 import { useMessage } from "naive-ui";
 
 import NotFoundPage from "../pages/NotFound.vue";
 
 const player = ref();
+let dplayer: any;
 
 const route = useRoute();
 const message = useMessage();
@@ -83,12 +96,17 @@ const message = useMessage();
 const roomid = ref(route.params.roomid);
 const userStatus = ref(0);
 
+const osFamily = platform.parse(navigator.userAgent).os.family;
+
 onMounted(() => {
   loadLiveroom();
 });
 onBeforeRouteUpdate((to) => {
   roomid.value = to.params.roomid;
   loadLiveroom();
+});
+onBeforeUnmount(() => {
+  dplayer.destroy();
 });
 
 const userInfo = reactive({
@@ -147,9 +165,7 @@ function createPlayer(stream: { hls: string; flv: string }) {
     return;
   }
 
-  console.log(count);
-
-  new DPlayer({
+  dplayer = new DPlayer({
     container: player.value,
     live: true,
     airplay: true,
@@ -169,24 +185,41 @@ function createPlayer(stream: { hls: string; flv: string }) {
           type: "customHls",
         },
       ],
-      defaultQuality: 0,
+      defaultQuality: osFamily === "iOS" ? 1 : 0,
       customType: {
-        customFlv: function (video: HTMLVideoElement) {
+        customFlv: (video: HTMLVideoElement) => {
           const flvPlayer = flvjs.createPlayer({
             type: "flv",
             url: video.src,
             isLive: true,
           });
+          flvPlayer.on(flvjs.Events.ERROR, (errorType, errorContent) => {
+            if (errorType === flvjs.ErrorTypes.MEDIA_ERROR) {
+              dplayer.notice("FLV 解码错误，尝试切换至 HLS");
+              dplayer.switchQuality(1);
+            } else {
+              dplayer.notice(
+                "FLV 播放错误: " + errorType + " - " + errorContent
+              );
+            }
+          });
           flvPlayer.attachMediaElement(video);
           flvPlayer.load();
         },
-        customHls: function (video: HTMLVideoElement) {
+        customHls: (video: HTMLVideoElement) => {
           const hls = new Hls();
           hls.loadSource(video.src);
           hls.attachMedia(video);
         },
       },
     },
+  });
+
+  dplayer.on("canplay", () => {
+    if (osFamily === "iOS" && dplayer.qualityIndex != 1) {
+      dplayer.notice("iOS 用户建议使用 HLS");
+    }
+    dplayer.play();
   });
 }
 </script>

@@ -34,3 +34,7 @@ html {
 .modal-footer-btn > .n-upload-trigger {
   width: 100%;
 }
+
+.content > * {
+  margin: 20px 0;
+}

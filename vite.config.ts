@@ -21,6 +21,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/live/, ""),
       },
     },
+    host: "0.0.0.0",
   },
   plugins: [
     vue(),

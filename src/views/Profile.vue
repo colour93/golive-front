@@ -188,10 +188,6 @@
   max-width: 1280px;
 }
 
-.content > * {
-  margin: 20px 0;
-}
-
 .header {
   margin: 20px 0;
 }

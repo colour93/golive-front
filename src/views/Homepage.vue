@@ -207,6 +207,30 @@ p {
   }
 }
 
+@media (max-height: 667px) {
+  
+  .btn-group {
+    bottom: 100px;
+  }
+
+  .title {
+    top: 100px;
+  }
+
+}
+
+@media (max-height: 400px) {
+  
+  .btn-group {
+    bottom: 50px;
+  }
+
+  .title {
+    top: 50px;
+  }
+
+}
+
 .homepage {
   height: 100vh;
   width: 100vw;
