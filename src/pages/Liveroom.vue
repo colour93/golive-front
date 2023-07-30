@@ -14,9 +14,18 @@
           <n-text class="username">{{ userInfo.username }}</n-text>
         </div>
       </div>
+      <n-text class="online-count">在线 {{ clientsCount }}</n-text>
     </div>
     <div class="content">
-      <div id="video" ref="player"></div>
+      <div class="player-content">
+        <div id="video" ref="player"></div>
+        <!-- <n-card class="player-sidebar">
+          <n-tabs type="line" animated>
+            <n-tab-pane name="danmaku" tab="弹幕"> 待填坑 </n-tab-pane>
+            <n-tab-pane name="online" tab="在线用户"> 待填坑 </n-tab-pane>
+          </n-tabs>
+        </n-card> -->
+      </div>
       <n-alert title="Tips" type="info" closable>
         如遇播放黑屏，请尝试在 右下角
         切换编码；如遇很多人都播放黑屏，请让主播重新推流
@@ -64,6 +73,14 @@
   width: 100%;
   height: auto;
 }
+
+.player-content {
+  display: flex;
+}
+
+.player-sidebar {
+  width: 300px;
+}
 </style>
 
 <script setup lang="ts">
@@ -75,26 +92,25 @@ import platform from "platform";
 
 import { useHead } from "@vueuse/head";
 import { onBeforeRouteUpdate, useRoute } from "vue-router";
-import {
-  ref,
-  onMounted,
-  reactive,
-  watch,
-  onBeforeUnmount,
-} from "vue";
+import { ref, onMounted, reactive, watch, onBeforeUnmount } from "vue";
 import axios from "axios";
 import { useMessage } from "naive-ui";
+
+import { WsBody, WsUpdateClientsCountBody } from "../types/ws";
 
 import NotFoundPage from "../pages/NotFound.vue";
 
 const player = ref();
 let dplayer: any;
+let chatWs: WebSocket;
 
 const route = useRoute();
 const message = useMessage();
 
-const roomid = ref(route.params.roomid);
+const roomId = ref(route.params.roomId);
 const userStatus = ref(0);
+
+const clientsCount = ref(0);
 
 const osFamily = platform.parse(navigator.userAgent).os.family;
 
@@ -102,10 +118,11 @@ onMounted(() => {
   loadLiveroom();
 });
 onBeforeRouteUpdate((to) => {
-  roomid.value = to.params.roomid;
+  roomId.value = to.params.roomId;
   loadLiveroom();
 });
 onBeforeUnmount(() => {
+  detachChatWs();
   dplayer.destroy();
 });
 
@@ -129,7 +146,7 @@ async function loadLiveroom() {
   const result = await axios
     .get("/api/live/get_info", {
       params: {
-        roomid: roomid.value,
+        roomId: roomId.value,
       },
     })
     .then((resp) => resp.data);
@@ -144,7 +161,7 @@ async function loadLiveroom() {
 
   userStatus.value = 1;
 
-  const { user, stream } = result.data;
+  const { user, stream, ws } = result.data;
 
   userInfo.username = user.username;
   userInfo.nickname = user.nickname;
@@ -152,6 +169,7 @@ async function loadLiveroom() {
   userInfo.avatarUrl = user.avatarUrl;
 
   if (stream) createPlayer(stream);
+  if (ws) createChatWs(ws);
 }
 
 function createPlayer(stream: { hls: string; flv: string }) {
@@ -221,5 +239,44 @@ function createPlayer(stream: { hls: string; flv: string }) {
     }
     dplayer.play();
   });
+}
+
+function createChatWs(wsOptions: { chat: string }) {
+  // 先断连
+  if (chatWs) chatWs.close();
+
+  chatWs = new WebSocket(wsOptions.chat);
+
+  chatWs.addEventListener("error", console.error);
+
+  chatWs.addEventListener("message", (ev) => {
+    const { data } = ev;
+
+    try {
+      const obj: WsBody = JSON.parse(data);
+
+      switch (obj.action) {
+        case "updateClientsCount":
+          updateClientsCount(obj as WsUpdateClientsCountBody);
+          break;
+
+        default:
+          return;
+      }
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  });
+}
+
+function detachChatWs() {
+  if (chatWs) chatWs.close();
+}
+
+function updateClientsCount(wsBody: WsUpdateClientsCountBody) {
+  const { count } = wsBody.data;
+
+  clientsCount.value = count;
 }
 </script>

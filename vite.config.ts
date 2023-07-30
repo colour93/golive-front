@@ -20,6 +20,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/live/, ""),
       },
+      ws: {
+        target: "http://localhost:9889/ws",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ws/, ""),
+        ws: true,
+      },
     },
     host: "0.0.0.0",
   },

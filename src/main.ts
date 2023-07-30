@@ -11,7 +11,7 @@ import NotFoundPage from "./pages/NotFound.vue";
 
 const routes = [
   { path: "/", component: IndexPage },
-  { path: "/live/:roomid", component: LiveroomPage },
+  { path: "/live/:roomId", component: LiveroomPage },
   { path: "/:pathMatch(.*)*", name: "NotFound", component: NotFoundPage },
 ];
 
