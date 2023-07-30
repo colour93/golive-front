@@ -1,6 +1,6 @@
 {
   "name": "golive-frontend",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "A management program based on LiveGo.",
   "type": "module",
   "scripts": {
